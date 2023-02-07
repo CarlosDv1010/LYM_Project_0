@@ -8,6 +8,7 @@ def everything():
     positions_used = []
     alphabet = list(string.ascii_lowercase)
     digits = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
+    reserved_words = ['if', 'else', 'while', '[', ']']
 
     def read_file(ruta: str):
         # Función para leer el archivo y retornar una lista sin espacios innecesarios con las líneas que no son vacías
@@ -88,7 +89,16 @@ def everything():
         else:
             return string
 
-    def form_lines(all_lines, proc_bool, num_read_lines):
+    all_separated_phrases = []
+
+    def check_phrase(phrases: list):
+        for i in phrases:
+            atpos = i.find(']')
+
+            phrase = i[:atpos]
+            all_separated_phrases.append(phrase)
+
+    def form_lines(all_lines, num_read_lines):
         # Si hay procedures, entonces forma las líneas teniendo eso en cuenta.
         # De lo contrario, lo hace solo como bloque de instrucciones.
 
@@ -104,6 +114,8 @@ def everything():
     def get_proc_name(phrase):
         return str(phrase).split("[")[0].strip().lower(), phrase.find('[')
 
+    def get_proc_parameters(all_proc_content):
+        return all_proc_content
 
     def run_script():
         # Función principal
@@ -121,18 +133,23 @@ def everything():
 
             # Caso con VARS y PROCS
             if all_lines[2][:5].upper() == "PROCS":
-                # Los procs definidos con sus respectivas instrucciones
+                # Los procs definidos con sus respectivas instrucciones y parámetros
                 defined_procs = dict()
                 print("Hay PROCS\n")
-                phrases = form_lines(all_lines, True, 3)
+                phrases = form_lines(all_lines, 3)
+
+                # Toda esta parte obtiene los PROCS válidos con su contenido
                 for phrase in phrases:
                     if str(phrase[0]) in alphabet:
                         proc_name = get_proc_name(phrase)
-                        if proc_name[0] not in defined_procs:
-                            cad = phrase[proc_name[1]-1:].strip()
-                            defined_procs[proc_name[0]] = cad[1:-1]
+                        name = proc_name[0]
+                        if proc_name[0] not in defined_procs and check_if_valid_name(name):
+                            cad = phrase[proc_name[1]:].strip()
+                            defined_procs[name] = cad
 
-                print(defined_procs)
+                for proc_content in defined_procs.values():
+                    proc_parameters = get_proc_parameters(proc_content)
+                    print(proc_parameters)
 
     return run_script()
 
