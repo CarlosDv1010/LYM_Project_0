@@ -1,14 +1,58 @@
 import re
+import nltk
 import string
 
 global output
 
 
 def everything():
-    positions_used = []
+    all_parameters = list()
     alphabet = list(string.ascii_lowercase)
     digits = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
-    reserved_words = ['if', 'else', 'while', '[', ']']
+    control_structure = ['if', 'then', 'else', 'while', 'do', 'repeat']
+    reserved_words = ['if', 'else', 'while', '[', ']', '|', 'PROCS', 'ROBOT_R', 'VARS', 'then', 'do', 'repeat',
+                      'assignTo',
+                      'goto', 'move', 'turn', 'face', 'put', 'pick', 'movetothe', 'moveindir', 'jumptothe', 'jumpindir',
+                      'nop', 'facing', 'canput', 'canpick', 'canmoveindir', 'canjumpindir', 'canmovetothe',
+                      'canjumptothe', 'not']
+
+    def run_script():
+        # Función principal
+        all_lines = read_file("programa.txt")
+        lines_concat = str()
+
+        for line in all_lines:
+            lines_concat += line
+
+        if lines_concat[:7].upper() != 'ROBOT_R':
+            print('Programa no válido, no comienza con "ROBOT_R"')
+            exit()
+
+        nw_lines = lines_concat[7:]
+        words = nltk.tokenize.word_tokenize(nw_lines)
+        vars_bool = False
+        vars_procs = False
+
+        # Chequea si hay VARS
+        if 'VARS' in words:
+            vars_bool = True
+            index = words.index('VARS')
+            string = get_until_semicolon(words, index + 3)
+            variables = [i for i in string.split(',') if check_if_valid_name(i)]
+            reserved_words.extend(variables)
+
+        # Chequea si hay PROCS
+        for i in range(len(words)):
+            if 'PROCS' in words[i]:
+                vars_procs = True
+                index_1 = words[i].index('PROCS')
+                words[i] = words[i][index_1 + 5:]
+
+        phrases = get_phrases(words)
+        for key in phrases.keys():
+            check_if_valid_phrase(phrases[key], key)
+
+        return None
 
     def read_file(ruta: str):
         # Función para leer el archivo y retornar una lista sin espacios innecesarios con las líneas que no son vacías
@@ -22,134 +66,121 @@ def everything():
         list = [i.strip() for i in lines if i.strip()]
         return list
 
-    def index_content(list):
-        # Recibe una lista y devuelve una tupla con el valor original y un índice
-
-        dct = dict()
-
-        for i in range(len(list)):
-            dct[f'{i}'] = list[i]
-
-        return dct
-
     def check_if_valid_name(name):
-        original_name = name
-        name.lower()
+        name = name.lower().strip()
 
         if name[0] in alphabet:
             for i in name:
                 if i not in alphabet and i not in digits:
-                    print(f'Programa no válido. Declaración de variable errónea. Name: {original_name}')
-                    exit()
+                    return False
             return True
         else:
-            print(f'Programa no válido. Declaración de variable errónea. Name: {original_name}')
-            exit()
+            return False
 
-    def check_list_by_commas(string):
-        try:
-            lst = string.split(',')
-            lst = [i.strip().lower() for i in lst if i.strip() and check_if_valid_name(i.strip().lower())]
+    def get_phrases(words):
+        phrases = {}
+        phrases['instructions'] = []
+        phrases['procs'] = []
+        last_index = len(words) - 1
+        index_1 = last_index
+        all_passed = False
+        current_last_index = last_index
+        # Recorrido de adelante hacia atrás
+        while not all_passed:
+            words[index_1] = words[index_1].strip()
+            if words[index_1] == ']':
+                count_closed_brackets = 1
+                count_open_brackets = 0
+                while count_closed_brackets != count_open_brackets:
+                    token = get_previous_token(words, index_1)
+                    index_1 -= 1
+                    if token == ']':
+                        count_closed_brackets += 1
+                    elif token == '[':
+                        count_open_brackets += 1
 
-            return lst
-        except Exception as e:
-            print('Excepción', e)
+                lst = words[index_1:current_last_index + 1]
+                phrase = "".join(words[index_1:current_last_index + 1])
+                if not check_if_valid_name(words[index_1 - 1]):
+                    phrases['instructions'].append(lst)
+                elif check_if_valid_name(words[index_1 - 1]):
+                    lst.insert(0, words[index_1 - 1])
+                    phrases['procs'].append(lst)
 
-    def check_vars(string):
-        # Recibe un string y revisa si cumple las condiciones para se un statement VARS válido.
-        # Si es válido, retorna la lista con las variables definidas en el archivo.
+                index_1 -= 1
+                current_last_index = index_1
 
-        if str(string[-1] == ";"):
-            lst = check_list_by_commas(string[4:-1])
-            return lst
-
-        else:
-            return "No hay un statement VARS válido"
-
-    def analize_next_procedure(string):
-        if '[' in string:
-            str_to_analyze = string.split('[')[0].strip()
-            if check_if_valid_name(str_to_analyze):
-                pass
-
-    def complete_brackets(string, lines, pos):
-        count_open_brackets = string.count("[")
-        count_closed_brackets = string.count("]")
-        positions_used.append(pos)
-        if count_open_brackets != count_closed_brackets:
-
-            try:
-                current_line = string + lines[pos + 1]
-                nw_str = complete_brackets(current_line, lines, pos + 1)
-
-                return nw_str
-            except Exception as e:
-                print("No hay una cadena posible donde se cierren los brackets correctamente")
-                exit()
-        else:
-            return string
-
-    all_separated_phrases = []
-
-    def check_phrase(phrases: list):
-        for i in phrases:
-            atpos = i.find(']')
-
-            phrase = i[:atpos]
-            all_separated_phrases.append(phrase)
-
-    def form_lines(all_lines, num_read_lines):
-        # Si hay procedures, entonces forma las líneas teniendo eso en cuenta.
-        # De lo contrario, lo hace solo como bloque de instrucciones.
-
-        lines = all_lines[num_read_lines:]
-        phrases = list()
-
-        for i in range(len(lines)):
-            if i not in positions_used:
-                phrases.append(complete_brackets(lines[i], lines, i))
+            elif index_1 == 0:
+                all_passed = True
+            else:
+                index_1 -= 1
+                current_last_index = index_1
 
         return phrases
 
-    def get_proc_name(phrase):
-        return str(phrase).split("[")[0].strip().lower(), phrase.find('[')
+    def check_if_valid_phrase(phrases, type):
+        if type == 'procs':
+            for phrase in phrases:
+                # parameters guarda en [0] los params de una frase y en [1] el bloque a procesar
+                parameters = check_parameters(phrase)
+                if parameters:
+                    check_if_valid_block(parameters[1])
+                else:
+                    check_if_valid_block(phrase[1:-1])
 
-    def get_proc_parameters(all_proc_content):
-        return all_proc_content
+        elif type == 'instructions':
+            for phrase in phrases:
+                if phrase[1] == '[' and phrase[-1] == ']':
+                    phrase = phrase[1:-1]
+                else:
+                    print('Sintaxis para bloque de instrucciones inválida')
+                check_if_valid_block(phrase)
 
-    def run_script():
-        # Función principal
-        all_lines = read_file("programa.txt")
-        if all_lines[0].upper() != 'ROBOT_R':
-            return 'Programa no válido, no comienza con "ROBOT_R"'
+    def check_parameters(proc_statement):
+        if proc_statement[1] == '[' and proc_statement[-1] == ']':
+            proc_statement = proc_statement[2:-1]
+            if not '|' in proc_statement[0] or (proc_statement[0]).find("|") != 0:
+                print('Definición de función sin definir parámetros apropiadamente')
+            else:
+                sentence = str(proc_statement[0]).removeprefix("|")
+                if sentence:
+                    try:
+                        all_phrase = "".join(proc_statement).removeprefix("|")
+                        nxt_index = all_phrase.find("|")
+                        all_parameters = all_phrase[:nxt_index].split(",")
+                        proc_statement[nxt_index] = proc_statement[nxt_index].removeprefix("|")
+                        if not proc_statement[nxt_index]:
+                            del proc_statement[nxt_index]
+                        params = []
+                        for i in all_parameters:
+                            if i not in reserved_words and check_if_valid_name(i):
+                                params.append(i)
+                            else:
+                                print('No se pueden usar palabras reservadas para definir parámetros')
+                        return params, proc_statement[nxt_index:]
 
-        indexed_lines = index_content(all_lines)
+                    except Exception as e:
+                        print('No hay delimitadores suficientes para los parametros de la función')
+                else:
+                    return [], proc_statement[2:]
 
-        # Se presupone que hay un renglón entre el último punto y coma de VARS y la siguiente instrucción
-        if all_lines[1][:4].upper() == "VARS":
-            # Las variables definidas
-            defined_vars = check_vars(all_lines[1])
-            print(f"Hay VARS: {defined_vars}\n")
+    def check_if_valid_block(string):
+        print(string)
 
-            # Caso con VARS y PROCS
-            if all_lines[2][:5].upper() == "PROCS":
-                # Los procs definidos con sus respectivas instrucciones y parámetros
-                defined_procs = dict()
-                print("Hay PROCS\n")
-                phrases = form_lines(all_lines, 3)
+    def get_previous_token(lst, index):
+        return lst[index - 1]
 
-                # Toda esta parte obtiene los PROCS válidos con su contenido
-                for phrase in phrases:
-                    if str(phrase[0]) in alphabet:
-                        proc_name = get_proc_name(phrase)
-                        name = proc_name[0]
-                        if proc_name[0] not in defined_procs and check_if_valid_name(name):
-                            cad = phrase[proc_name[1]:].strip()
-                            defined_procs[name] = cad
-
-                for proc_content in defined_procs.values():
-                    proc_parameters = get_proc_parameters(proc_content)
-                    print(proc_parameters)
+    def get_until_semicolon(lista, pos):
+        cad = ''
+        semicolon_found = False
+        i = pos
+        while not semicolon_found and i < len(lista):
+            if lista[i] != ';':
+                cad += lista[i]
+            else:
+                semicolon_found = True
+            i += 1
+        return cad
 
     return run_script()
 

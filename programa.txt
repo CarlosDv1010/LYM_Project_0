@@ -6,8 +6,11 @@ PROCS
 
 
 
-putCB [|c , b | assignTo : 1 , one ;
-put : c , chips ; put : b , balloons;]goNorth [| |while : canMovetoThe : 1 , north do: [ moveInDir : 1 , north;]]goWest [ | | if : canMoveInDir : 1 , west then: [ MoveInDir : 1 , west;] else : nop; ]
+putCB [|c , b | assignTo : 1 , one ;put : c , chips ; put : b , balloons;]
+
+goNorth [|c, f |while : canMovetoThe : 1 , north do: [ moveInDir : 1 , north;]]
+
+goWest [ | | if : canMoveInDir : 1 , west then: [ MoveInDir : 1 , west;] else : [nop;]]
 
 
 
