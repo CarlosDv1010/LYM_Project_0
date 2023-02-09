@@ -109,7 +109,6 @@ def everything():
         try:
             ParserElement.parse_string(block_structure, cad)
         except Exception as e:
-            print(string)
             print(e)
 
     def check_parameters(proc_statement):
@@ -211,8 +210,7 @@ def everything():
     command_jumpindir = Literal("jumpindir:") + var_or_num + Literal(',') + direction + Literal(';')
     command_nop = Literal('nop:') + Literal(';')
 
-    command = Group(
-        command_assignto | command_goto | command_move | command_turn | command_face | command_put | command_pick | command_movetothe | command_moveindir | command_jumptothe | command_jumpindir | command_nop)
+    command = command_assignto | command_goto | command_move | command_turn | command_face | command_put | command_pick | command_movetothe | command_moveindir | command_jumptothe | command_jumpindir | command_nop
 
     condition_facing = Literal('facing:') + direction
     condition_canput = Literal('canput:') + var_or_num + Literal(',') + Group(Literal('chips') | Literal('balloons'))
@@ -225,17 +223,16 @@ def everything():
         condition_facing | condition_canput | condition_canpick | condition_canmoveindir | condition_canjumpindir | condition_canmovetothe | condition_canjumptothe)
     condition_facing = Literal('not:') + condition
 
-    condition = Group(
-        condition_facing | condition_facing | condition_canput | condition_canpick | condition_canmoveindir | condition_canjumpindir | condition_canmovetothe | condition_canjumptothe)
+    condition = condition_facing | condition_facing | condition_canput | condition_canpick | condition_canmoveindir | condition_canjumpindir | condition_canmovetothe | condition_canjumptothe
 
     while_structure = Forward()
     if_structure = Forward()
     repeat_structure = Forward()
     basic_structure = Group(Literal('[') + (if_structure | while_structure | repeat_structure | command) + Literal(']'))
 
-    if_structure = Literal('if:') + condition + Literal('then:') + basic_structure + Literal('else:') + basic_structure
-    while_structure = Literal('while:') + condition + Literal('do:') + basic_structure
-    repeat_structure = Literal('repeat:') + var_or_num + basic_structure
+    if_structure <<= Literal('if:') + condition + Literal('then:') + basic_structure + Literal('else:') + basic_structure
+    while_structure <<= Literal('while:') + condition + Literal('do') + Literal(":") + basic_structure
+    repeat_structure <<= Literal('repeat:') + var_or_num + basic_structure
 
     block_structure = (command | if_structure | while_structure | repeat_structure)
 
