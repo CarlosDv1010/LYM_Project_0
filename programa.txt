@@ -1,24 +1,16 @@
-                    
 ROBOT_R
-
-          VARS nom  , x , y , one
+VARS nom, x, y, one
 PROCS
+putCB [ |c, b| assignTo: 1, one;
+put:c, Chips; put:b, Balloons ]
 
+goNorth[||
+while: canMoveToThe: 1, front do: [ moveInDir: 1, north]
+]
 
-
-putCB [|c , b | assignTo : 1 , one ;put : c , chips ; put : b , balloons]
-
-goNorth [|c, f |while : canMovetoThe : 1 , north do: [ moveInDir : 1 , north]]
-
-goWest [ | | if : canMoveInDir : 1 , west then: [ MoveInDir : 1 , west] else : [nop]]
-
-
-
-
-
+goWest [ |   | if: canMoveInDir: 1, west then: [moveInDir: 1,
+	west] else: [nop:]]
 [
-goTo : 3 , 3;
-
-
-putcb : 2 ,1
+goto: 3,3;
+putCB: 2,1
 ]

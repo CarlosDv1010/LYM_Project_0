@@ -45,6 +45,25 @@ def everything():
 
         nw_lines = lines_concat[7:]
         words = nltk.tokenize.word_tokenize(nw_lines)
+        recorrido = False
+        i = 0
+        length = len(words)
+        while not recorrido and i < length:
+            if '||' in words[i]:
+                words.insert(i, "|")
+                words[i+1] = words[i+1][1:]
+            if ',' in words[i] and len(words[i]) > 1:
+                lst = words[i].split(",")
+                num = len(lst)
+                index = i
+                words.remove(words[i])
+                for j in range(num):
+                    words.insert(index, lst[j])
+                    if j != num-1:
+                        words.insert(index+1, ",")
+                        index += 2
+            length = len(words)
+            i += 1
         vars_bool = False
         vars_procs = False
 
@@ -53,7 +72,7 @@ def everything():
             vars_bool = True
             index = words.index('VARS')
             string = get_until_semicolon(words, index + 3)
-            variables = [i for i in string.split(',') if check_if_valid_name(i)]
+            variables = [i for i in string.split(',') if check_if_valid_name(i)] #ERROR
             reserved_words.extend(variables)
 
         # Chequea si hay PROCS
@@ -67,7 +86,7 @@ def everything():
         check_if_valid_phrase(phrases['procs'], 'procs')
         check_if_valid_phrase(phrases['instructions'], 'instructions')
 
-        return None
+        print('Programa válido')
 
     def read_file(ruta: str):
         # Función para leer el archivo y retornar una lista sin espacios innecesarios con las líneas que no son vacías
@@ -116,6 +135,11 @@ def everything():
 
                 lst = words[index_1:current_last_index + 1]
                 phrase = "".join(words[index_1:current_last_index + 1])
+                c_open = phrase.count("[")
+                c_close = phrase.count("]")
+                if not c_close == c_open:
+                    print('Error99')
+                    exit()
                 if not check_if_valid_name(words[index_1 - 1]):
                     phrases['instructions'].append(lst)
                 elif check_if_valid_name(words[index_1 - 1]):
@@ -141,7 +165,9 @@ def everything():
                 if parameters:
                     check_if_valid_block(parameters[1])
                 else:
-                    check_if_valid_block(phrase[1:-1])
+                    frase = phrase[3:-1]
+                    frase[0] = str(frase[0]).strip("|").strip('[').strip(';')
+                    check_if_valid_block(frase)
 
         elif type == 'instructions':
             for phrase in phrases:
@@ -153,44 +179,103 @@ def everything():
 
     def check_parameters(proc_statement):
         name = proc_statement[0]
-        commands_dct[name] = []
+        commands_dct[name.lower()] = []
         if proc_statement[1] == '[' and proc_statement[-1] == ']':
             proc_statement = proc_statement[2:-1]
             if not '|' in proc_statement[0] or (proc_statement[0]).find("|") != 0:
                 print('Definición de función sin definir parámetros apropiadamente')
             else:
-                sentence = str(proc_statement[0]).removeprefix("|")
+                sentence = str(proc_statement[0])
                 if sentence:
                     try:
                         all_phrase = "".join(proc_statement).removeprefix("|")
                         nxt_index = all_phrase.find("|")
                         all_parameters = all_phrase[:nxt_index].split(",")
-                        commands_dct[name].extend(all_parameters)
+                        commands_dct[name.lower()].extend(all_parameters)
                         proc_statement[nxt_index] = proc_statement[nxt_index].removeprefix("|")
                         if not proc_statement[nxt_index]:
                             del proc_statement[nxt_index]
                         params = []
+
+                        if not all_parameters[0]:
+                            proc_statement[0] = str(proc_statement[0]).strip('|')
+                            return [], proc_statement[0:]
+
                         for i in all_parameters:
                             if i not in reserved_words and check_if_valid_name(i):
                                 params.append(i)
                             else:
                                 print('No se pueden usar palabras reservadas para definir parámetros')
-                        return params, proc_statement[nxt_index:]
+                                exit()
+                        if not '|' in proc_statement[nxt_index-1]:
+                            return params, proc_statement[nxt_index:]
+                        else:
+                            proc_statement[nxt_index-1] = proc_statement[nxt_index-1][str(proc_statement[nxt_index-1]).find('|')+1:]
+                            return params, proc_statement[nxt_index-1:]
 
                     except Exception as e:
                         print('No hay delimitadores suficientes para los parametros de la función')
                 else:
-                    return [], proc_statement[2:]
+                    return [], proc_statement[1:]
 
-    def check_parameters_coincide(parameters, condition_or_command_name):
-        return True
+    def check_if_num_var(string, num_var_or_num_or_var):
+        # Si no es num_var exit(), no es de retornar
+        return False
+
+    def check_parameters_coincide(parameters, condition_or_command_name, condit_or_command):
+        if condit_or_command == 'condition':
+            real_params = conditions_dct[condition_or_command_name]
+
+            try:
+                for i in range(len(real_params)):
+                    if real_params[i] == 'num_var':
+                        check_if_num_var(parameters[i], 'num_var')
+                    elif real_params[i] == 'condition':
+                        if not parameters[i] in conditions_dct.keys():
+                            print('Error5')
+                            exit()
+                    else:
+                        if not parameters[i] in conditions_dct[condition_or_command_name][i]:
+                            print('Error66')
+                            exit()
+                return True
+
+            except Exception as e:
+                print('Error33')
+                exit()
+        else:
+            real_params = commands_dct[condition_or_command_name]
+            try:
+                for i in range(len(real_params)):
+                    if real_params[i] == 'num_var':
+                        check_if_num_var(parameters[i], 'num_var')
+                    elif real_params[i] == 'num':
+                        check_if_num_var(parameters[i], 'num')
+                    elif real_params[i] == 'var':
+                        check_if_num_var(parameters[i], 'var')
+                    elif not i:
+                        return True
+                    else:
+                        if not parameters[i].lower() in commands_dct[condition_or_command_name][i]:
+                            print('Error6')
+                            exit()
+                return True
+
+            except Exception as e:
+                print('Error33')
+                exit()
 
     def check_command(string):
-        # Se le pasa el string desde la condición
+        # Se le pasa el string desde el comando
+        one_value = False
         string_ = string[0].lower()
-        if string_ in commands_dct.keys():
+        if string_ in commands_dct.keys() and string[1] == ':':
             num_valores = len(commands_dct[string_])
-            condits = string[2:3 + num_valores]
+            if num_valores == 1:
+                one_value = True
+                condits = string[2:3]
+            else:
+                condits = string[2:3 + num_valores]
             for i in range(len(condits)):
                 if i % 2 == 1 and condits[i] != ',':
                     print('Faltan comas')
@@ -198,16 +283,27 @@ def everything():
 
             cad = "".join(condits)
             parameters = cad.split(",")
-            if not check_parameters_coincide(parameters, string_):
+            if not check_parameters_coincide(parameters, string_.lower(), 'command'):
                 print("Los tipos de los argumentos no coinciden con los especificados")
-            return string[3 + num_valores:]
+            if not one_value:
+                return string[3 + num_valores:]
+            else:
+                return string[3:]
+        else:
+            print('Error 65')
+            exit()
 
     def check_condition(string):
         # Se le pasa el string desde la condición
+        one_value = False
         string_ = string[0].lower()
-        if string_ in conditions_dct.keys():
+        if string_ in conditions_dct.keys() and ":" in string:
             num_valores = len(conditions_dct[string_])
-            condits = string[2:3 + num_valores]
+            if num_valores == 1:
+                one_value = True
+                condits = string[2:3]
+            else:
+                condits = string[2:3 + num_valores]
             for i in range(len(condits)):
                 if i % 2 == 1 and condits[i] != ',':
                     print('Faltan comas')
@@ -215,19 +311,35 @@ def everything():
 
             cad = "".join(condits)
             parameters = cad.split(",")
-            if not check_parameters_coincide(parameters, string_):
+            if not check_parameters_coincide(parameters, string_.lower(), 'condition'):
                 print("Los tipos de los argumentos no coinciden con los especificados")
-
-        return string[3 + num_valores:]
+        if not one_value:
+            return string[3 + num_valores:]
+        else:
+            return string[3:]
 
     def check_if_valid_block(string):
         cad_ = string[0].strip().lower()
         if not cad_ in control_structure:
             if cad_ in commands_dct.keys():
-                nw_cad = check_command(string[:])
-        #FALTA DE AQUI PARA ABAJO, YA ESTAN LOS PARAMETROS DE LAS FUNCIONES AGREGADOS EN TEORÍA PARA TENERSE EN CUENTA
+                centinela = True
 
+                if len(check_command(string[:])) > 1:
+                    nw_cad = check_command(string[:])
+
+                    while centinela and nw_cad:
+                        if nw_cad[1] in control_structure:
+                            check_if_valid_block(nw_cad[1:])
+                            centinela = False
+                        elif nw_cad[0] == ']':
+                            centinela = False
+                        else:
+                            if not nw_cad[1] in control_structure:
+                                nw_cad = check_command(nw_cad[1:])
+                            else:
+                                check_if_valid_block(nw_cad[1:])
         else:
+            # Falta añadir el resto de estructuras
             if cad_ == 'if':
                 if not (string[1] == ':'):
                     print('Error1')
@@ -235,13 +347,56 @@ def everything():
                 else:
                     nw_cad = check_condition(string[2:])
                 if not (nw_cad[0] == 'then' and nw_cad[1] == ':' and nw_cad[2] == '['):
+                    print('Error21')
+                    exit()
+                else:
+                    check_if_valid_block(nw_cad[3:])
+            if cad_ == 'then':
+                if not (string[1] == ':'):
+                    print('Error1')
+                    exit()
+                else:
+                    check_if_valid_block(string[3:])
+                if not (nw_cad[0] == 'else' and nw_cad[1] == ':' and nw_cad[2] == '['):
                     print('Error2')
                     exit()
                 else:
-                    check_if_valid_block(nw_cad[:])
+                    check_if_valid_block(nw_cad[3:])
+            if cad_ == 'else':
+                if not (string[1] == ':'):
+                    print('Error1')
+                    exit()
+                else:
+                    check_if_valid_block(string[3:-1])
+
+            if cad_ == 'while':
+                if not (string[1] == ':'):
+                    print('Error1')
+                    exit()
+                else:
+                    nw_cad = check_condition(string[2:])
+                if not (nw_cad[0] == 'do' and nw_cad[1] == ':' and nw_cad[2] == '['):
+                    print('Error28')
+                    exit()
+                else:
+                    check_if_valid_block(nw_cad[3:])
+
+            if cad_ == 'repeat':
+                if not (string[1] == ':'):
+                    print('Error1')
+                    exit()
+                else:
+                    check_if_valid_block(string[2:])
+                if not (nw_cad[0] == ']'):
+                    print('Error29')
+                    exit()
 
     def get_previous_token(lst, index):
-        return lst[index - 1]
+        try:
+            return lst[index - 1]
+        except Exception as e:
+            print('Error57')
+            exit()
 
     def get_until_semicolon(lista, pos):
         cad = ''
@@ -255,7 +410,7 @@ def everything():
             i += 1
         return cad
 
-    return run_script()
+    run_script()
 
 
-print(everything())
+everything()
