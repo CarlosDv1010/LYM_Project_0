@@ -1,12 +1,9 @@
-import re
 import nltk
 import string
-
 global output
 
 
 def everything():
-    all_parameters = list()
     alphabet = list(string.ascii_lowercase)
     digits = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
     control_structure = 'if then else while do repeat'
@@ -33,6 +30,20 @@ def everything():
                       'canjumptothe': ['num_var', 'front right left back'],
                       'canmoveindir': ['num_var', 'north south east west'],
                       'not': ['num_var']}
+    current_params_lst = []
+    vars_lstt = []
+
+    def get_variables(lines):
+        try:
+            index = lines.index('VARS')
+            index_2 = lines.index('PROCS')
+            line = lines[index+4:index_2]
+            lst = line.split(',')
+            var_lst = [i.strip() for i in lst if check_if_valid_name(i)]
+            return var_lst
+        except Exception as e:
+            print('Error')
+            exit()
 
     def run_script():
         # Función principal
@@ -41,6 +52,9 @@ def everything():
 
         for line in all_lines:
             lines_concat += line
+
+        vars_ = get_variables(lines_concat)
+        vars_lstt.extend(vars_)
 
         if lines_concat[:7].upper() != 'ROBOT_R':
             print('Programa no válido, no comienza con "ROBOT_R"')
@@ -67,12 +81,9 @@ def everything():
                         index += 2
             length = len(words)
             i += 1
-        vars_bool = False
-        vars_procs = False
 
         # Chequea si hay VARS
         if 'VARS' in words:
-            vars_bool = True
             index = words.index('VARS')
             string = get_until_semicolon(words, index + 3)
             variables = [i for i in string.split(',') if check_if_valid_name(i)]  # ERROR
@@ -81,7 +92,6 @@ def everything():
         # Chequea si hay PROCS
         for i in range(len(words)):
             if 'PROCS' in words[i]:
-                vars_procs = True
                 index_1 = words[i].index('PROCS')
                 words[i] = words[i][index_1 + 5:]
 
@@ -161,22 +171,24 @@ def everything():
         return phrases
 
     def check_if_valid_phrase(phrases, type):
-        print(type)
         if type == 'procs':
 
             for phrase in phrases:
-                print('AAAAAAAAAAAAAAAAAAAA', phrase)
                 # parameters guarda en [0] los params de una frase y en [1] el bloque a procesar
                 parameters = check_parameters(phrase)
                 if parameters[0]:
+
                     check_if_valid_block(parameters[1])
+                    current_params_lst.clear()
+
                 else:
                     frase = phrase[3:-1]
                     frase[0] = str(frase[0]).strip("|").strip('[').strip(';')
                     check_if_valid_block(frase)
+                    current_params_lst.clear()
 
         elif type == 'instructions':
-            print('EEEEEEEEEEEEEEEEEEEEEEE')
+
             for phrase in phrases:
                 if phrase[0] == '[' and phrase[-1] == ']':
                     phrase = phrase[1:-1]
@@ -199,6 +211,7 @@ def everything():
                         nxt_index = all_phrase.find("|")
                         all_parameters = all_phrase[:nxt_index].split(",")
                         commands_dct[name.lower()].extend(all_parameters)
+                        current_params_lst.extend(all_parameters)
                         proc_statement[nxt_index] = proc_statement[nxt_index].removeprefix("|")
                         if not proc_statement[nxt_index]:
                             del proc_statement[nxt_index]
@@ -228,6 +241,15 @@ def everything():
                     return [], proc_statement[1:]
 
     def check_if_num_var(string, num_var_or_num_or_var):
+        if num_var_or_num_or_var == 'num' and not string.isnumeric():
+            print('Error de num')
+            exit()
+        elif num_var_or_num_or_var == 'num_var' and not string.isnumeric() and string not in vars_lstt and string not in current_params_lst:
+            pass
+
+        elif num_var_or_num_or_var == 'var' and string not in vars_lstt and string not in current_params_lst:
+            print('Error de var')
+            exit()
         # Si no es num_var exit(), no es de retornar
         return False
 
@@ -300,7 +322,6 @@ def everything():
             else:
                 return string[3:]
         else:
-            print(string)
             print('Error 65')
             exit()
 
@@ -360,7 +381,6 @@ def everything():
                 pass
 
             cad_ = next(s.strip().lower() for s in string if s)
-            print(string)
 
             if cad_ in commands_dct.keys():
                 nw = check_command(string)
