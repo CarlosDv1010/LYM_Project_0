@@ -16,20 +16,23 @@ def everything():
                       'nop', 'facing', 'canput', 'canpick', 'canmoveindir', 'canjumpindir', 'canmovetothe',
                       'canjumptothe', 'not']
 
-    commands_dct = {'assignto': ['num', 'var'], 'goto': ['num_var', 'num_var'], 'move': ['num_var'], 'turn': ['left right around'],
-                    'face': ['north south east west'], 'put' : ['num_var', 'chips balloons'], 'pick': ['num_var', 'chips balloons'],
-                    'movetothe' : ['num_var', 'front right left back'], 'jumptothe': ['num_var', 'front right left back'],
+    commands_dct = {'assignto': ['num', 'var'], 'goto': ['num_var', 'num_var'], 'move': ['num_var'],
+                    'turn': ['left right around'],
+                    'face': ['north south east west'], 'put': ['num_var', 'chips balloons'],
+                    'pick': ['num_var', 'chips balloons'],
+                    'movetothe': ['num_var', 'front right left back'],
+                    'jumptothe': ['num_var', 'front right left back'],
                     'jumpindir': ['num_var', 'north south east west'], 'nop': [],
                     'moveindir': ['num_var', 'north south east west']}
 
     conditions_dct = {'facing': ['north south east west'],
                       'canput': ['num_var', 'chips balloons'],
                       'canpick': ['num_var', 'chips balloons'],
-                      'canjumpindir' : ['num_var', 'north south east west'],
+                      'canjumpindir': ['num_var', 'north south east west'],
                       'canmovetothe': ['num_var', 'front right left back'],
                       'canjumptothe': ['num_var', 'front right left back'],
                       'canmoveindir': ['num_var', 'north south east west'],
-                      'not': ['condition']}
+                      'not': ['num_var']}
 
     def run_script():
         # Función principal
@@ -51,7 +54,7 @@ def everything():
         while not recorrido and i < length:
             if '||' in words[i]:
                 words.insert(i, "|")
-                words[i+1] = words[i+1][1:]
+                words[i + 1] = words[i + 1][1:]
             if ',' in words[i] and len(words[i]) > 1:
                 lst = words[i].split(",")
                 num = len(lst)
@@ -59,8 +62,8 @@ def everything():
                 words.remove(words[i])
                 for j in range(num):
                     words.insert(index, lst[j])
-                    if j != num-1:
-                        words.insert(index+1, ",")
+                    if j != num - 1:
+                        words.insert(index + 1, ",")
                         index += 2
             length = len(words)
             i += 1
@@ -72,7 +75,7 @@ def everything():
             vars_bool = True
             index = words.index('VARS')
             string = get_until_semicolon(words, index + 3)
-            variables = [i for i in string.split(',') if check_if_valid_name(i)] #ERROR
+            variables = [i for i in string.split(',') if check_if_valid_name(i)]  # ERROR
             reserved_words.extend(variables)
 
         # Chequea si hay PROCS
@@ -158,11 +161,14 @@ def everything():
         return phrases
 
     def check_if_valid_phrase(phrases, type):
+        print(type)
         if type == 'procs':
+
             for phrase in phrases:
+                print('AAAAAAAAAAAAAAAAAAAA', phrase)
                 # parameters guarda en [0] los params de una frase y en [1] el bloque a procesar
                 parameters = check_parameters(phrase)
-                if parameters:
+                if parameters[0]:
                     check_if_valid_block(parameters[1])
                 else:
                     frase = phrase[3:-1]
@@ -170,6 +176,7 @@ def everything():
                     check_if_valid_block(frase)
 
         elif type == 'instructions':
+            print('EEEEEEEEEEEEEEEEEEEEEEE')
             for phrase in phrases:
                 if phrase[0] == '[' and phrase[-1] == ']':
                     phrase = phrase[1:-1]
@@ -207,11 +214,13 @@ def everything():
                             else:
                                 print('No se pueden usar palabras reservadas para definir parámetros')
                                 exit()
-                        if not '|' in proc_statement[nxt_index-1]:
+                        if not '|' in proc_statement[nxt_index - 1]:
                             return params, proc_statement[nxt_index:]
                         else:
-                            proc_statement[nxt_index-1] = proc_statement[nxt_index-1][str(proc_statement[nxt_index-1]).find('|')+1:]
-                            return params, proc_statement[nxt_index-1:]
+                            proc_statement[nxt_index - 1] = proc_statement[nxt_index - 1][
+                                                            str(proc_statement[nxt_index - 1]).find('|') + 1:]
+
+                            return params, proc_statement[1:]
 
                     except Exception as e:
                         print('No hay delimitadores suficientes para los parametros de la función')
@@ -234,6 +243,7 @@ def everything():
                         if not parameters[i] in conditions_dct.keys():
                             print('Error5')
                             exit()
+
                     else:
                         if not parameters[i] in conditions_dct[condition_or_command_name][i]:
                             print('Error66')
@@ -290,6 +300,7 @@ def everything():
             else:
                 return string[3:]
         else:
+            print(string)
             print('Error 65')
             exit()
 
@@ -318,78 +329,99 @@ def everything():
         else:
             return string[3:]
 
+    def delimit_command(string):
+        index = list(string).index("[")
+        lst = string[index:]
+        open_bracks = 0
+        closed_bracks = 0
+
+        for i in range(len(lst)):
+
+            if lst[i] == '[':
+                open_bracks += 1
+            elif lst[i] == ']':
+                closed_bracks += 1
+
+            elif open_bracks == closed_bracks:
+                return (string[index:i], string[i:])
+
     def check_if_valid_block(string):
-        cad_ = string[0].strip().lower()
-        if not cad_ in control_structure:
+        if string:
+            try:
+                if string[0] == "," or string[0] == ";" or not string[0]:
+                    if string[0] == ";" and string[1] != 'while' and string[1] != 'repeat' and string[1] != 'nop' and string[1] != 'if':
+                        print('POSIBLE ERROR')
+                    string.pop(0)
+
+                    if string[1] == "," or string[1] == ";" or not string[1]:
+                        string.pop(1)
+
+            except Exception as e:
+                pass
+
+            cad_ = next(s.strip().lower() for s in string if s)
+            print(string)
+
             if cad_ in commands_dct.keys():
-                centinela = True
+                nw = check_command(string)
+                check_if_valid_block(nw[1:])
 
-                if len(check_command(string[:])) > 1:
-                    nw_cad = check_command(string[:])
+            elif cad_ in control_structure:
+                if cad_ == 'if':
+                    if not (string[1] == ':'):
+                        print('Error1')
+                        exit()
+                    else:
+                        nw_cad = check_condition(string[2:])
+                    if not (nw_cad[0] == 'then' and nw_cad[1] == ':' and nw_cad[2] == '['):
+                        print('Error21')
+                        exit()
+                    else:
+                        check_if_valid_block(nw_cad)
+                elif cad_ == 'then':
+                    commands_to_analyze = delimit_command(string[2:])
+                    check_if_valid_block(commands_to_analyze[0][1:-1])
+                    check_if_valid_block(commands_to_analyze[1])
+                elif cad_ == 'else':
+                    if not (string[1] == ':'):
+                        print('Error1')
+                        exit()
+                    else:
+                        commands_to_analyze = delimit_command(string[2:])
+                        check_if_valid_block(commands_to_analyze[0][1:-1])
+                        check_if_valid_block(commands_to_analyze[1][1:])
 
-                    while centinela and nw_cad:
-                        if nw_cad[1] in control_structure:
-                            check_if_valid_block(nw_cad[1:])
-                            centinela = False
-                        elif nw_cad[0] == ']':
-                            centinela = False
-                        else:
-                            if not nw_cad[1] in control_structure:
-                                nw_cad = check_command(nw_cad[1:])
-                            else:
-                                check_if_valid_block(nw_cad[1:])
-        else:
-            # Falta añadir el resto de estructuras
-            if cad_ == 'if':
-                if not (string[1] == ':'):
-                    print('Error1')
-                    exit()
-                else:
-                    nw_cad = check_condition(string[2:])
-                if not (nw_cad[0] == 'then' and nw_cad[1] == ':' and nw_cad[2] == '['):
-                    print('Error21')
-                    exit()
-                else:
-                    check_if_valid_block(nw_cad[3:])
-            if cad_ == 'then':
-                if not (string[1] == ':'):
-                    print('Error1')
-                    exit()
-                else:
-                    check_if_valid_block(string[3:])
-                if not (nw_cad[0] == 'else' and nw_cad[1] == ':' and nw_cad[2] == '['):
-                    print('Error2')
-                    exit()
-                else:
-                    check_if_valid_block(nw_cad[3:])
-            if cad_ == 'else':
-                if not (string[1] == ':'):
-                    print('Error1')
-                    exit()
-                else:
-                    check_if_valid_block(string[3:-1])
+                elif cad_ == 'while':
+                    if not (string[1] == ':'):
+                        print('Error1')
+                        exit()
+                    else:
+                        nw_cad = check_condition(string[2:])
 
-            if cad_ == 'while':
-                if not (string[1] == ':'):
-                    print('Error1')
-                    exit()
-                else:
-                    nw_cad = check_condition(string[2:])
-                if not (nw_cad[0] == 'do' and nw_cad[1] == ':' and nw_cad[2] == '['):
-                    print('Error28')
-                    exit()
-                else:
-                    check_if_valid_block(nw_cad[3:])
+                    if not (nw_cad[0] == 'do' and nw_cad[1] == ':' and nw_cad[2] == '['):
+                        print('Error21')
+                        exit()
+                    else:
+                        commands_to_analyze = delimit_command(string[2:])
+                        check_if_valid_block(commands_to_analyze[0][1:-1])
+                        check_if_valid_block(commands_to_analyze[1][1:])
 
-            if cad_ == 'repeat':
-                if not (string[1] == ':'):
-                    print('Error1')
-                    exit()
-                else:
-                    check_if_valid_block(string[2:])
-                if not (nw_cad[0] == ']'):
-                    print('Error29')
-                    exit()
+                elif cad_ == 'do':
+                    if not (string[1] == ':' and string[2] == '['):
+                        print('Error1')
+                        exit()
+                    else:
+                        commands_to_analyze = delimit_command(string[2:])
+                        check_if_valid_block(commands_to_analyze[0][1:-1])
+                        check_if_valid_block(commands_to_analyze[1][1:])
+                elif cad_ == 'repeat':
+                    if not (string[1] == ':'):
+                        print('Error1')
+                        exit()
+                    else:
+                        commands_to_analyze = delimit_command(string[2:])
+                        check_if_valid_block(commands_to_analyze[0][1:-1])
+                        check_if_valid_block(commands_to_analyze[1][1:])
 
     def get_previous_token(lst, index):
         try:
